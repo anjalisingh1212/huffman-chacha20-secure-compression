@@ -39,28 +39,29 @@ int decompress_file(const char *input_file, const char *output_file){
 	uint8_t last_valid_bits;
 	memcpy(&last_valid_bits, packedData+offset, sizeof(uint8_t));
 	printf("valid bits = %d\n", last_valid_bits);
-	
+	offset++;	
 	unsigned char byte = '0';
 	int bit = 0;
 	char buffer[BUFFER_SIZE];
 	int i = 0;
-        
+       	int bits_read = 0;
+	int shift_bit = 7;
+	int valid_bits = 8;	
 	FILE *fpO = fopen(output_file, "w");
         if(fpO == NULL){
 		fprintf(stderr, "Error in opening file\n");
                 return -1;
         }
 	printf("offset = %d, packedDataSize = %lld\n", offset, packedDataSize);	
-	printHex((packedData+31), packedDataSize);
-	while(offset <= packedDataSize){
+	printHex(packedData, packedDataSize);
+	while(offset < packedDataSize-1){
 		byte = packedData[offset++];
-		printf("byte = %02X\n",byte);
-		int bits_to_read = 0;
-		int shift_bit = 7;
-		if(offset == packedDataSize)
-			bits_to_read = 8-last_valid_bits;
-		while(shift_bit >= bits_to_read){
-			
+		printf("\n\tbyte = %02X\n",byte);
+		printf("offset : %d\n",offset);
+		valid_bits = (offset == packedDataSize - 1) ? last_valid_bits : 8;
+		shift_bit = 7;
+		bits_read = 0;	
+		while(bits_read < valid_bits){
 			bit = (byte >> shift_bit) & 1;
 			printf("bit = %d\n", bit);
 			head = (bit == 0) ? head->left : head->right;
@@ -83,7 +84,7 @@ int decompress_file(const char *input_file, const char *output_file){
 				}
 			}
 			shift_bit--;	
-		
+			bits_read++;
 			}
 	}	
 
@@ -95,6 +96,8 @@ int decompress_file(const char *input_file, const char *output_file){
                  }
 	}
 	
+	free(packedData);
+	//free_huffman_tree(root);
 	fclose(fpO);
 	printf("Decompression complete\n");
 	return 0;

@@ -87,7 +87,7 @@ HuffmanNode* mergeNodes(HuffmanNode *nodeA, HuffmanNode *nodeB){
 
 HuffmanNode* build_huffman_tree(uint32_t *freq){
 	printf("In huffman file\n");	
-	
+	int is_empty = 1;	
 	MinHeap *heap = (MinHeap*)malloc(sizeof(MinHeap));
 	heap->size = 0;
 	heap->capacity = 0;
@@ -99,6 +99,7 @@ HuffmanNode* build_huffman_tree(uint32_t *freq){
 	}
 	for(int i = 0; i < 256; i++){
 		if(freq[i] > 0){
+			is_empty = 0;
     			heap->size++;
 			heap->capacity++;
 			heap->uniqueData++;
@@ -113,6 +114,7 @@ HuffmanNode* build_huffman_tree(uint32_t *freq){
 		}
 
 	}
+	if(is_empty = 0)
 	printf("\nheap array\n");
 	for(int i = 0; i < heap->size; i++){
 		//printf("node = %p\n", heap->node_array[i]);
@@ -161,10 +163,13 @@ void generate_huffman_code(HuffmanNode *root, char *code, int depth, char *code_
         printf("root = %c\n", root->data);
                 code[depth] = '\0';
         printf("code = %s\n", code);
-                code_table[root->data] = strdup(code);
+	if ((unsigned char)root->data < 256)
+                code_table[(unsigned char)root->data] = strdup(code);
+	else
+		printf("Root data out of 256: %d\n", root->data);
         }
         code[depth] = '0';
-        generate_huffman_code(root->left, code, depth+1, code_table);
+	generate_huffman_code(root->left, code, depth+1, code_table);
         code[depth] = '1';
         generate_huffman_code(root->right, code, depth+1, code_table);
 

@@ -17,9 +17,9 @@
 void encode_and_write_data(FILE *fpI, unsigned char **buffer, int *offset, size_t *buffSize, char *code_table[]){
 	printf("\n\tencode data\n");
 	unsigned char bitPackage = '\0';
-	char ch = '0';
+	unsigned char ch = '0';
 	int bits_empty = 8;
-	char code[50] = {0};
+	char code[100] = {0};
 	int total_bits = 0;
 	(*buffSize)++;
 	*buffer = realloc(*buffer, *buffSize);
@@ -29,14 +29,22 @@ void encode_and_write_data(FILE *fpI, unsigned char **buffer, int *offset, size_
 	}
 	int placeholder	= *offset;
 	memcpy(*buffer+(*offset), &ch, sizeof(char));
-	//printf("Left placeholder\n");
+	printf("Left placeholder\n");
 	(*offset)++;
-	//printf("offset = %d\n",*offset);	
+	printf("offset = %d\n",*offset);	
 	fseek(fpI, 0, SEEK_SET);
 	while(fread(&ch, sizeof(ch), 1, fpI)){
-//		printf("read from file\n");
+		printf("read from file\n");
+		if(ch >= 256){
+			printf(stderr, "Bad byte value : %d\n",ch);
+			return 0;
+		}
+		if (!code_table[ch]) {
+    			fprintf(stderr,"No Huffman code for byte 0x%02X ('%c')\n",ch,(ch >= 32 && ch < 127) ? ch : '?');
+  			return 0;
+}
 		strcpy(code, code_table[ch]);
-//		printf("read buff = %c, code = %s\n",ch, code);
+		printf("read buff = %c, code = %s\n",ch, code);
 		total_bits += strlen(code);
 		for(int i = 0; i < strlen(code); i++){
 			int bit = (code[i] == '1') ? 1:0;
@@ -50,7 +58,13 @@ void encode_and_write_data(FILE *fpI, unsigned char **buffer, int *offset, size_
 		{
 			//printf("char written = %d\n", (unsigned char)bitPackage);
 			(*buffSize)++;
+			if(*buffSize < (*offset)+1)
+				*buffSize = (*offset)+1;
 			*buffer = realloc(*buffer, *buffSize);
+			if (*offset >= *buffSize) {
+    				fprintf(stderr,"Buffer overflow: offset %zu, buffSize %zu\n",*offset, *buffSize);
+    					errExit("Buffer size less than offset");
+			}
 			memcpy((*buffer)+(*offset), &bitPackage, sizeof(bitPackage));
 			bits_empty = 8;
 		       	bitPackage = '\0';
@@ -63,9 +77,10 @@ void encode_and_write_data(FILE *fpI, unsigned char **buffer, int *offset, size_
 	//	printf("char written = %d\n", (unsigned char)bitPackage);
 			(*buffSize)++;
 			*buffer = realloc(*buffer, *buffSize);
-		memcpy((*buffer)+(*offset), &bitPackage, sizeof(bitPackage));
+			memcpy((*buffer)+(*offset), &bitPackage, sizeof(bitPackage));
+			(*offset)++;
 	}
-	uint8_t valid_bits = 8-bits_empty;
+	uint8_t valid_bits = (bits_empty == 8) ? 8 : 8-bits_empty;
 	printf("valid bits %d\n",valid_bits);
 	(*buffSize)++;
 	*buffer = realloc(*buffer, *buffSize);
@@ -103,22 +118,27 @@ int compress_file(const char* input_file, const char* output_file){
 	size_t freqSize = 256;
 	int totalUniqueChar = 0;
 	unsigned char buffer[BUFFER_SIZE];
+	int is_empty = 1;
 	FILE *fpI = fopen(input_file, "r");
 	if(fpI == NULL)
 		errExit("Fopen");
 
-	FILE *fpO = fopen(output_file, "w");
-	if(fpO == NULL)
-		errExit("Fopen");
 	printf("Files opened successfully\n");
 	while(0<(bytesRead = fread(buffer,1, BUFFER_SIZE, fpI)))
 	{
 		printf("bytes read = %d\n",bytesRead);
-		for(int i = 0; i < strlen(buffer); i++)	{
+		for(int i = 0; i < bytesRead; i++)	{
 			if(freq[buffer[i]] == 0)
 				totalUniqueChar++;
 			freq[buffer[i]]++;
+			is_empty = 0;
 		}
+	}
+
+	if(is_empty){
+		printf("Input file is empty. Nothing to compress.\n");
+    		fclose(fpI);
+		return 0;
 	}
 	printf("Next loop\n");
 	for(int i = 0; i < 256; i++){
@@ -127,6 +147,10 @@ int compress_file(const char* input_file, const char* output_file){
 		}
 	}
 	printf("\n");
+
+	FILE *fpO = fopen(output_file, "w");
+	if(fpO == NULL)
+		errExit("Fopen");
 	HuffmanNode* root = build_huffman_tree(freq);
 	if(!root){
 		printf("Tree build failed\n");
@@ -134,6 +158,7 @@ int compress_file(const char* input_file, const char* output_file){
 	}
 	char code[100];
 	char *codeTable[freqSize];
+	memset(codeTable, 0, sizeof(codeTable));
 	size_t packedDataSize = 1;
 	unsigned char *packedData = calloc(packedDataSize,sizeof(unsigned char));
 	if(!packedData){
@@ -148,7 +173,7 @@ int compress_file(const char* input_file, const char* output_file){
 		
 	printf("Buffer (hex) so far: ");
 	
-	printHex((packedData+31), packedDataSize);	
+	printHex(packedData, packedDataSize);	
 	printf("packedDataSize = %ld\n",packedDataSize);
 	uint8_t *cipherText = NULL;
 	unsigned long long cipherTextLen = 0;
@@ -156,21 +181,19 @@ int compress_file(const char* input_file, const char* output_file){
 	uint8_t nonce[NONCE_SIZE];
 	encrypt_data(packedData, packedDataSize, &cipherText, &cipherTextLen, salt, nonce);
 		
-
-/*	printf("print cipher text\n");
-	printHex(cipherText, cipherTextLen);
-	printf("print salt\n");
-	printHex(salt, SALT_SIZE);
-	printf("print nonce");
-	printHex(nonce, NONCE_SIZE);
-	*/
-	
 	fwrite(MAGIC_HEADER,1, MAGIC_HEADER_LEN, fpO);
 	fwrite(salt, 1, SALT_SIZE, fpO);
 	fwrite(nonce, 1, NONCE_SIZE, fpO);
 	fwrite(&cipherTextLen, 1, sizeof(unsigned long long), fpO);
 	fwrite(cipherText, 1, cipherTextLen, fpO);
-
+	// Free code_table after encoding is done
+	for (int i = 0; i < freqSize; ++i) {
+    		if (codeTable[i]) {
+			printf("Freeing codeTable[%d] = %s\n", i, codeTable[i]);
+        		free(codeTable[i]);
+        		codeTable[i] = NULL; // Safe cleanup
+    		}
+	}
 	free(cipherText);
 	free(packedData);
 	fclose(fpO); //Close output file
