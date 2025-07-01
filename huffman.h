@@ -18,12 +18,18 @@ typedef struct HuffmanNode {
 
 typedef struct MinHeap {
 	int size;
-	int capacity;
-	int uniqueData;
 	HuffmanNode **node_array;
 }MinHeap;
 
 
-HuffmanNode* build_huffman_tree(uint32_t freq[]);
+MinHeap* build_huffman_tree(uint32_t freq[]);
+HuffmanNode *createNode(int freq, char data);
+HuffmanNode* extractMin(MinHeap *heap);
+void swap(struct HuffmanNode **node_array, int l, int r);
+void heapifyUp(MinHeap *heap);
+void heapifyDown(MinHeap *heap);
+HuffmanNode* mergeNodes(HuffmanNode *nodeA, HuffmanNode *nodeB);
 void generate_huffman_code(HuffmanNode *root, char *code, int depth, char *code_table[]);
+void free_Minheap_Huffman(HuffmanNode *root);
+
 #endif  //HUFFMAN_H__

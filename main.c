@@ -8,9 +8,9 @@
 
 
 int main(){
-	
-	char input_file[100];
-	char output_file[100];
+	printf("In main\n");
+	char input_file[100] = "\0";
+	char output_file[100] = "\0";
 	int choice = 10;
 	while(choice != 0){
 		printf("-------------------------------\n");

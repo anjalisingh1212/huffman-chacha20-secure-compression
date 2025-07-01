@@ -14,18 +14,23 @@ int encrypt_data(const unsigned char *buffer, const size_t buffSize,
 	int ch;
 	// Prompt user for password
 	char password[256];
+	while ((ch = getchar()) != '\n' && ch != EOF);
 	printf("Enter a password for encryption: ");
-	fgets(password, sizeof(password), stdin);	
+	if (fgets(password, sizeof(password), stdin) == NULL) {
+    	fprintf(stderr, "Error reading password\n");
+    	return -1;
+	}	
 	// Remove newline from fgets input, if present
 	password[strcspn(password, "\n")] = 0;
 	
-	while((ch = getchar()) != '\n' && ch != EOF);
+
+	printf("Password used for encryption is: %s\n", password);
+
 	// Initialize the Sodium library
 	if(sodium_init() < 0){
 		fprintf(stderr, "libsodium initialization failed\n");
     		return -1;
 	}
-
 	// Generate random salt
 	randombytes_buf(salt, SALT_SIZE);
 
@@ -49,7 +54,6 @@ int encrypt_data(const unsigned char *buffer, const size_t buffSize,
 		       	NULL, nonce, key) != 0)
 	{
 		fprintf(stderr, "Ecryption failed (invalid key, nonce, or ciphertext)\n");
-        	free(*ciphertext);
         	return -1;
 	}
 	return 0;

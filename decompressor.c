@@ -14,7 +14,7 @@
 #include "decryptor.h"
         
 int decompress_file(const char *input_file, const char *output_file){
-	unsigned char *packedData = {0};
+	unsigned char *packedData = NULL;
 	unsigned long long packedDataSize = 0;
 	
 	if(decrypt_data(input_file, &packedData, &packedDataSize) == -1)
@@ -26,7 +26,6 @@ int decompress_file(const char *input_file, const char *output_file){
 	size_t freqSize = 256;
 	uint32_t freq[256] = {0};
 	unsigned char symbol;
-        char *codeTable[freqSize];
 	
 	for(int i = 0; i < N; i++){
 		symbol = packedData[offset++];
@@ -34,17 +33,17 @@ int decompress_file(const char *input_file, const char *output_file){
 		offset += sizeof(uint32_t);
 		printf("char = %c, freq = %d\n", symbol, freq[symbol]);
 	}
-	HuffmanNode* root = build_huffman_tree(freq);
-	HuffmanNode* head = root;
+	MinHeap* root = build_huffman_tree(freq);
+	HuffmanNode* head = root->node_array[0];
 	uint8_t last_valid_bits;
 	memcpy(&last_valid_bits, packedData+offset, sizeof(uint8_t));
 	printf("valid bits = %d\n", last_valid_bits);
 	offset++;	
 	unsigned char byte = '0';
 	int bit = 0;
-	char buffer[BUFFER_SIZE];
+	unsigned char buffer[BUFFER_SIZE];
 	int i = 0;
-       	int bits_read = 0;
+    int bits_read = 0;
 	int shift_bit = 7;
 	int valid_bits = 8;	
 	FILE *fpO = fopen(output_file, "w");
@@ -73,7 +72,7 @@ int decompress_file(const char *input_file, const char *output_file){
 			if(head->left == NULL && head->right == NULL){
 				buffer[i++] = head->data;
 				printf("buffer = %c\n", buffer[i-1]);
-				head = root;
+				head = root->node_array[0];
 				printf("head reset = %c\n", head->data);	
 				if(i >= BUFFER_SIZE){
 					if(fwrite(buffer, 1, i, fpO) <= 0){
@@ -90,14 +89,16 @@ int decompress_file(const char *input_file, const char *output_file){
 
 	if(i > 0){
 		if(fwrite(buffer, 1, i, fpO) <= 0){
-         		fprintf(stderr, "Couldn't write to file.\n");
-                        fclose(fpO);
+         	fprintf(stderr, "Couldn't write to file.\n");
+            fclose(fpO);
 			return -1;
-                 }
+        }
 	}
 	
+	free_Minheap_Huffman(root->node_array[0]);
+	free(root->node_array);
+	free(root);
 	free(packedData);
-	//free_huffman_tree(root);
 	fclose(fpO);
 	printf("Decompression complete\n");
 	return 0;

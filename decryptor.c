@@ -39,13 +39,18 @@ int decrypt_data(const char *input_file, unsigned char **packedData, unsigned lo
 	uint8_t key[crypto_aead_chacha20poly1305_ietf_KEYBYTES];
 	// Prompt user for password
         char password[256];
-	char ch;
+		char ch;
+        while((ch = getchar()) != '\n' && ch != EOF);
+
         printf("Enter the encryption password used for decryption: ");
-        fgets(password, sizeof(password), stdin);
+        
+		if (fgets(password, sizeof(password), stdin) == NULL) {
+    		fprintf(stderr, "Failed to read password.\n");
+    		return -1;
+		}
+
         // Remove newline from fgets input, if present
         password[strcspn(password, "\n")] = 0;
-
-        while((ch = getchar()) != '\n' && ch != EOF);
         // Initialize the Sodium library
 	if(sodium_init() < 0){
 		fprintf(stderr, "linsodium initialization failed\n");
@@ -75,18 +80,20 @@ int decrypt_data(const char *input_file, unsigned char **packedData, unsigned lo
 //	printf("print cipher text\n");
         //printHex(cipherText, cipherTextLen);
 	*packedDataSize = cipherTextLen - crypto_aead_chacha20poly1305_ietf_ABYTES;
-	*packedData = malloc(*packedDataSize);
+	uint8_t *tempDecrypted = malloc(*packedDataSize);
 
-	if(crypto_aead_chacha20poly1305_ietf_decrypt(*packedData, packedDataSize,
+	if(crypto_aead_chacha20poly1305_ietf_decrypt(tempDecrypted, packedDataSize,
 					NULL,
 					cipherText, cipherTextLen,
 					NULL, 0,
 					nonce, key) != 0){
 		fprintf(stderr, "Decryption failed (invalid key, nonce, or ciphertext)\n");
+		free(tempDecrypted);
 		fclose(fpI);
-        	return -1;
+        return -1;
 	}
-       	 
+    
+	*packedData = tempDecrypted;
 	fclose(fpI);
 	return 0;
 }
