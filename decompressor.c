@@ -1,5 +1,4 @@
-//decompressor.c
-
+// decompressor.c
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -12,94 +11,163 @@
 #include "utils.h"
 #include "huffman.h"
 #include "decryptor.h"
-        
-int decompress_file(const char *input_file, const char *output_file){
+
+int decompress_file(const char *input_file, const char *output_file)
+{
+	printf("Proceeding for decompression. ..\n");
+	
 	unsigned char *packedData = NULL;
 	unsigned long long packedDataSize = 0;
-	
-	if(decrypt_data(input_file, &packedData, &packedDataSize) == -1)
+
+	// Decrypt and read the compressed data
+	if (decrypt_data(input_file, &packedData, &packedDataSize) == -1)
 		return -1;
-	//printHex(packedData, packedDataSize);
-	
+
 	int offset = 0;
-	int N = (int)packedData[offset++];
+	int N = (int)packedData[offset++];	// Number of unique symbols
 	size_t freqSize = 256;
 	uint32_t freq[256] = {0};
 	unsigned char symbol;
-	
-	for(int i = 0; i < N; i++){
+
+	// Reconstruct frequency table
+	for (int i = 0; i < N; i++)
+	{
 		symbol = packedData[offset++];
-		memcpy(&freq[symbol], packedData+offset, sizeof(uint32_t));
+		memcpy(&freq[symbol], packedData + offset, sizeof(uint32_t));
 		offset += sizeof(uint32_t);
-		printf("char = %c, freq = %d\n", symbol, freq[symbol]);
+		//printf("char = %c, freq = %d\n", symbol, freq[symbol]);
 	}
-	MinHeap* root = build_huffman_tree(freq);
-	HuffmanNode* head = root->node_array[0];
+
+	// Rebuild Huffman tree
+	MinHeap *root = build_huffman_tree(freq);
+	if(!root || root->size == 0)
+	{
+		free(packedData);
+		errExit("Failed to build Huffman tree from frequency table");
+	}
+	HuffmanNode *head = root->node_array[0];
+	if(!head)
+	{
+		free_Minheap_Huffman(root->node_array[0]);
+		free(root->node_array);
+		free(root);
+		free(packedData);
+		errExit("Huffman tree root is NULL");
+	}
+	// Get the number of valid bits in the last byte
 	uint8_t last_valid_bits;
-	memcpy(&last_valid_bits, packedData+offset, sizeof(uint8_t));
-	printf("valid bits = %d\n", last_valid_bits);
-	offset++;	
+	memcpy(&last_valid_bits, packedData + offset, sizeof(uint8_t));
+	offset++;
+	
+	FILE *fpO = fopen(output_file, "w");
+	if (!fpO)
+	{
+		free_Minheap_Huffman(root->node_array[0]);	
+		free(root->node_array);
+		free(root);
+		free(packedData);
+		errExit("Fopen for output file");
+	}
+
+	// Special case: if the tree has only one node, write that character repeatedly
+	if(head->left == NULL && head->right == NULL)
+	{
+		// Calculate the total number of valid bits in the encoded data.
+		// (packedDataSize - offset - 1) gives the number of fully filled bytes (each with 8 bits).
+		// The last byte is only partially filled, so we add 'last_valid_bits' separately.
+		unsigned int totalBits = (packedDataSize - offset - 1)* 8 + last_valid_bits;
+		
+		for (int i = 0; i < totalBits; i++)
+		{
+			if (fputc(head->data, fpO) == EOF)
+			{
+				fprintf(stderr, "Couldn't write to output file.\n");
+				fclose(fpO);
+				free_Minheap_Huffman(root->node_array[0]);
+				free(root->node_array);
+				free(root);
+				free(packedData);
+				return -1;
+			}
+		}
+		fclose(fpO);
+		free_Minheap_Huffman(root->node_array[0]);
+		free(root->node_array);
+		free(root);
+		free(packedData);
+		return 0;
+	}
+	// Decode the packed data bit by bit and write to output file
 	unsigned char byte = '0';
-	int bit = 0;
 	unsigned char buffer[BUFFER_SIZE];
 	int i = 0;
-    int bits_read = 0;
-	int shift_bit = 7;
-	int valid_bits = 8;	
-	FILE *fpO = fopen(output_file, "w");
-        if(fpO == NULL){
-		fprintf(stderr, "Error in opening file\n");
-                return -1;
-        }
-	printf("offset = %d, packedDataSize = %lld\n", offset, packedDataSize);	
-	printHex(packedData, packedDataSize);
-	while(offset < packedDataSize-1){
+
+	while (offset < packedDataSize)
+	{
+		int valid_bits = (offset == packedDataSize - 1) ? last_valid_bits : 8;
 		byte = packedData[offset++];
-		printf("\n\tbyte = %02X\n",byte);
-		printf("offset : %d\n",offset);
-		valid_bits = (offset == packedDataSize - 1) ? last_valid_bits : 8;
-		shift_bit = 7;
-		bits_read = 0;	
-		while(bits_read < valid_bits){
-			bit = (byte >> shift_bit) & 1;
-			printf("bit = %d\n", bit);
+		int bits_read = 0;
+		int shift_bit = 7;
+		while (bits_read < valid_bits)
+		{
+			int bit = (byte >> shift_bit) & 1;
 			head = (bit == 0) ? head->left : head->right;
-			if (head == NULL) {
-            			fprintf(stderr, "Error: Corrupted Huffman tree traversal.\n");
-            			fclose(fpO);
-            			return -1;
-        		}	
-			if(head->left == NULL && head->right == NULL){
+			if (head == NULL)
+			{
+				fprintf(stderr, "Error: Corrupted Huffman tree traversal.\n");
+				fclose(fpO);
+				free_Minheap_Huffman(root->node_array[0]);
+                free(root->node_array);
+                free(root);
+                free(packedData);
+				return -1;
+			}
+
+			// Reached a leaf node — write symbol to buffer
+			if (head->left == NULL && head->right == NULL)
+			{
 				buffer[i++] = head->data;
-				printf("buffer = %c\n", buffer[i-1]);
 				head = root->node_array[0];
-				printf("head reset = %c\n", head->data);	
-				if(i >= BUFFER_SIZE){
-					if(fwrite(buffer, 1, i, fpO) <= 0){
-						fprintf(stderr, "Couldn't write to file.\n");
+				if (i >= BUFFER_SIZE)
+				{
+					if (fwrite(buffer, 1, i, fpO) <= 0)
+					{
+						fprintf(stderr, "Couldn't write to output file.\n");
 						fclose(fpO);
+						free_Minheap_Huffman(root->node_array[0]);
+                        free(root->node_array);
+                        free(root);
+                        free(packedData);
 						return -1;
 					}
+					i = 0; // Reset buffer index after writing
 				}
 			}
-			shift_bit--;	
+			shift_bit--;
 			bits_read++;
-			}
-	}	
-
-	if(i > 0){
-		if(fwrite(buffer, 1, i, fpO) <= 0){
-         	fprintf(stderr, "Couldn't write to file.\n");
-            fclose(fpO);
-			return -1;
-        }
+		}
 	}
-	
+
+	// Write any remaining data in buffer
+	if (i > 0)
+	{
+		if (fwrite(buffer, 1, i, fpO) <= 0)
+		{
+			fprintf(stderr, "Couldn't write to file.\n");
+			fclose(fpO);
+			free_Minheap_Huffman(root->node_array[0]);
+			free(root->node_array);	
+			free(root);
+			free(packedData);
+			return -1;
+		}
+	}
+
+	// Clean up
 	free_Minheap_Huffman(root->node_array[0]);
 	free(root->node_array);
 	free(root);
 	free(packedData);
 	fclose(fpO);
-	printf("Decompression complete\n");
 	return 0;
 }

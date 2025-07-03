@@ -1,77 +1,52 @@
 // huffman.c
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include "huffman.h"
+#include "utils.h"
 
+// Builds a Huffman tree from the given frequency table
 MinHeap* build_huffman_tree(uint32_t *freq){
-	printf("In huffman file\n");		
 	MinHeap *heap = (MinHeap*)malloc(sizeof(MinHeap));
 	heap->size = 0;
 	heap->node_array = (HuffmanNode**)malloc(sizeof(HuffmanNode*));
-	if(heap->node_array == NULL){
-		printf("Memory allocation failed\n");
-		return NULL;
-	}
+	if(heap->node_array == NULL)
+		errExit("Memory allocation failed for Huffman node array");
+
+	// Insert all non-zero frequency characters into the heap
 	for(int i = 0; i < 256; i++){
 		if(freq[i] > 0){
     		heap->size++;
 			heap->node_array = (HuffmanNode**)realloc(heap->node_array,sizeof(HuffmanNode*)*heap->size);
-			if(heap->node_array == NULL){
-				printf("Memory allocation failed\n");
-				return NULL;
-			}
+			if(heap->node_array == NULL)
+				errExit("Memory allocation failed for Huffman node array resize");
+			
 			heap->node_array[heap->size-1] = createNode(freq[i], (char)i);
-			//printf("inserted %c, %d\n", heap->node_array[heap->size-1]->data, heap->node_array[heap->size-1]->freq);
 			heapifyUp(heap);
 		}
 
 	}
-	printf("\nheap array\n");
-	for(int i = 0; i < heap->size; i++){
-		//printf("node = %p\n", heap->node_array[i]);
-		printf("%d %c\n",heap->node_array[i]->freq, heap->node_array[i]->data);
-	}
-	printf("size of heap = %d\n", heap->size);
+	
+	// Merge nodes until only one tree remains
 	while(heap->size > 1){
 		HuffmanNode *nodeA = extractMin(heap);
-		printf("nodeA = %d, %c\n", nodeA->freq, nodeA->data);	
-		
-		//printf("\nAfter heapify down\n");
-		/*for(int i = 0; i < heap->size; i++){
-			printf("%d %c\n",heap->node_array[i]->freq, heap->node_array[i]->data);
-		}*/
 		HuffmanNode *nodeB = extractMin(heap);
-		printf("nodeB = %d, %c\n", nodeB->freq, nodeB->data);	
 		
-		//printf("i = %d, size = %d\n",i, heap->size);
-		//printf("\nAfter 2nd heapify down\n");
-		//for(int i = 0; i < heap->size; i++){
-		//	printf("%d %c\n",heap->node_array[i]->freq, heap->node_array[i]->data);
-		//}
 		heap->node_array[heap->size] = mergeNodes(nodeA, nodeB);
 		heap->size++;
 		heapifyUp(heap);
-		//printf("heapify up\n");
-		//for(int i = 0; i < heap->size; i++){
-		//	printf("%d %c\n",heap->node_array[i]->freq, heap->node_array[i]->data);
-		//}
-		
-		//printf("i = %d, size = %d\n",i, heap->size);
 	}
 
-	printf("return from build tree\n");
 	return heap;
 }
 
-HuffmanNode *createNode(int freq, char data){
+// Creates a new Huffman node with the given frequency and character
+HuffmanNode *createNode(uint32_t freq, char data){
 	HuffmanNode *newNode = (HuffmanNode*)malloc(sizeof(HuffmanNode));
-	if(newNode == NULL){
-		printf("Memory allocation failed\n");
-		return NULL;
-	}
+	if(newNode == NULL)
+		errExit("Memory allocation failed for new Huffman node");
+
 	newNode->freq = freq;
 	newNode->data = data;
 	newNode->left = newNode->right = NULL;
@@ -80,20 +55,13 @@ HuffmanNode *createNode(int freq, char data){
 
 // Extracts the minimum node from the heap and restores the min-heap property
 HuffmanNode* extractMin(MinHeap *heap){
-	if(heap->size == 0){
-		printf("Heap is empty\n");
-		return NULL;
-	}
+	if(heap->size == 0)	return NULL;
+	
 	HuffmanNode *minNode = heap->node_array[0];
-	//printf("minNode = %c, %d\n", minNode->data, minNode->freq);
 	heap->node_array[0] = heap->node_array[heap->size-1];
 	heap->node_array[heap->size-1] = NULL;
 	heap->size--;
 	heapifyDown(heap);
-	//printf("After heapify down\n");
-	/*for(int i = 0; i < heap->size; i++){
-		printf("%d %c\n",heap->node_array[i]->freq, heap->node_array[i]->data);
-	}*/
 	return minNode;
 }
 
@@ -106,14 +74,10 @@ void swap(struct HuffmanNode **node_array, int l, int r){
 
 // Restores min-heap property by moving the last node up to its correct position
 void heapifyUp(MinHeap *heap){
-	//printf("Heapify\n");
 	int i = heap->size-1;
-	//printf("size = %d\n",i);
 	while(i > 0){
 		int p = (i-1)/2;
-	//	printf("p = %d, i = %d\n",p, i);
 		if(heap->node_array[p]->freq > heap->node_array[i]->freq){
-	//		printf("swap\n");
 			swap(heap->node_array, p, i);
 			i = p;
 		}
@@ -121,66 +85,59 @@ void heapifyUp(MinHeap *heap){
 	}
 }
 
+// Restores min-heap property by moving the node down to its correct position
 void heapifyDown(MinHeap *heap){
-	//printf("In heapify down");
 	int par_idx = 0;
 	int idx = 0;
+
 	while(par_idx < heap->size){
 		int left = (2*par_idx) + 1;
 		int right = (2*par_idx) + 2;
-		if(left >= heap->size && right >= heap->size){
-		//	printf("break\n");
-			break;
-		}
+		if(left >= heap->size && right >= heap->size)	break;
+		
 		if(right >= heap->size || heap->node_array[left]->freq <= heap->node_array[right]->freq)
 			idx = left;
 		else	idx = right;
-		//printf("swap i = %d, idx = %d\n",i, idx);
 		
-		//printf("Before swap %c - %c\n", heap->node_array[i]->data, heap->node_array[idx]->data);
 		if(heap->node_array[par_idx]->freq > heap->node_array[idx]->freq)
-		{
-			//if parent less than child swap
 			swap(heap->node_array, par_idx , idx);
-		}
 		else break;
-		//	printf("After swap %c - %c\n", heap->node_array[i]->data, heap->node_array[idx]->data);
+
 		par_idx = idx;
 	}
 }
 
-//Merge the two smallest node from heap array and get anew node
+// Merges two Huffman nodes into one new parent node
 HuffmanNode* mergeNodes(HuffmanNode *nodeA, HuffmanNode *nodeB){
 	HuffmanNode *newNode = (HuffmanNode*)malloc(sizeof(HuffmanNode));
-	if (!newNode) {
-    	fprintf(stderr, "Memory allocation failed in mergeNodes\n");
-    	exit(EXIT_FAILURE);
-	}
+	if (!newNode) 
+		errExit("Memory allocation failed for new Huffman node");
 
 	newNode->freq = nodeA->freq + nodeB->freq;
-	newNode->data = '\0';
+	newNode->data = '\0'; // Internal node does not hold a character
 	newNode->left = nodeA;
 	newNode->right = nodeB;
-	//printf("nodeA = %c, nodeB = %c\n",nodeA->data, nodeB->data);
-	//printf("nodeA = %d, nodeB = %d\n",nodeA->freq, nodeB->freq);
 	return newNode;
-
 }
 
+// Recursively generates Huffman codes and fills the code table
 void generate_huffman_code(HuffmanNode *root, char *code, int depth, char *code_table[]){
-        if(!root)
-                return;
-        printf("%d and %d\n", !root->left, !root->right);
-        if(!root->left && !root->right)
-        {
-        printf("root = %c\n", root->data);
-                code[depth] = '\0';
-        printf("code = %s\n", code);
-	if ((unsigned char)root->data < 256)
-                code_table[(unsigned char)root->data] = strdup(code);
-	else
-		printf("Root data out of 256: %d\n", root->data);
-        }
+    if(!root)	return;
+
+	// Leaf node: assign the code string to the corresponding character
+    if(!root->left && !root->right)
+    {
+		if(depth == 0){
+			code[0] = '0'; // Assign '0' for the root node
+        	code[1] = '\0';
+		} else {
+			code[depth] = '\0'; // Null-terminate the code string
+		}
+		code_table[(unsigned char)root->data] = strdup(code); // Store the code in the table
+		return;
+    }
+
+	// Traverse left and right subtrees, appending '0' and '1' to the code
     code[depth] = '0';
 	generate_huffman_code(root->left, code, depth+1, code_table);
     code[depth] = '1';
@@ -188,6 +145,7 @@ void generate_huffman_code(HuffmanNode *root, char *code, int depth, char *code_
 
 }
 
+// Frees the memory allocated for the Huffman tree
 void free_Minheap_Huffman(HuffmanNode *root){
 	if(root == NULL)
 		return;
