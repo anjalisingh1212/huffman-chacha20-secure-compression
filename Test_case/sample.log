@@ -1,0 +1,10 @@
+[2025-07-01 09:15:27] INFO  Server started on port 8080
+[2025-07-01 09:15:28] INFO  Connection established with 192.168.1.10
+[2025-07-01 09:15:30] WARN  High memory usage detected (82%)
+[2025-07-01 09:15:33] INFO  Received request: GET /api/status
+[2025-07-01 09:15:34] ERROR Timeout while reading from socket
+[2025-07-01 09:15:36] INFO  Connection closed by client
+[2025-07-01 09:16:01] INFO  Server health: OK
+[2025-07-01 09:16:10] INFO  Backup completed successfully
+[2025-07-01 09:17:21] INFO  New client registered: user42
+
