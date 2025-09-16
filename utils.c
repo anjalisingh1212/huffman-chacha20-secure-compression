@@ -10,14 +10,16 @@ void errExit(const char *str){
 	exit(EXIT_FAILURE);
 }
 
-const char *compressed_exts[] = {
-    ".jpg", ".png", ".mp3", ".zip", ".rar", ".gz", ".mp4", ".avi", ".pdf", NULL
-};
 
 int is_compressed_format(const char *filename) {
+    const char *compressed_exts[] = {
+    ".jpg", ".png", ".mp3", ".zip", ".rar", ".gz", ".mp4", ".avi", ".pdf", NULL
+};
     const char **ext = compressed_exts;
+    int len = strlen(filename);
     while (*ext) {
-        if(strstr(filename, *ext)) {
+        int ext_len = strlen(*ext);
+        if(len >= ext_len && strcmp(filename+(len-ext_len), *ext) == 0) {
             return 1; // Found a compressed format
         }
         ext++;

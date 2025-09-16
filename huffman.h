@@ -29,6 +29,7 @@ typedef struct MinHeap {
  * @return MinHeap* Pointer to the final min-heap containing the root node.
  */
 MinHeap* build_huffman_tree(uint32_t freq[]);
+
 /**
  * @brief Creates a new Huffman node.
  * 
@@ -37,6 +38,7 @@ MinHeap* build_huffman_tree(uint32_t freq[]);
  * @return HuffmanNode* Pointer to the newly created node.
  */
 HuffmanNode *createNode(uint32_t freq, char data);
+
 /**
  * @brief Extracts the minimum node from the min-heap.
  * 
@@ -44,6 +46,7 @@ HuffmanNode *createNode(uint32_t freq, char data);
  * @return HuffmanNode* Pointer to the extracted node.
  */
 HuffmanNode* extractMin(MinHeap *heap);
+
 /**
  * @brief Swaps two nodes in the min-heap array.
  * 
@@ -52,18 +55,21 @@ HuffmanNode* extractMin(MinHeap *heap);
  * @param r Index of the second node.
  */
 void swap(struct HuffmanNode **node_array, int l, int r);
+
 /**
  * @brief Restores the min-heap property by moving the last node up.
  * 
  * @param heap Pointer to the min-heap.
  */
 void heapifyUp(MinHeap *heap);
+
 /**
  * @brief Restores the min-heap property by moving the node down.
  * 
  * @param heap Pointer to the min-heap.
  */
 void heapifyDown(MinHeap *heap);
+
 /**
  * @brief Merges two Huffman nodes into a new parent node.
  * 
@@ -72,6 +78,7 @@ void heapifyDown(MinHeap *heap);
  * @return HuffmanNode* Pointer to the newly created parent node.
  */
 HuffmanNode* mergeNodes(HuffmanNode *nodeA, HuffmanNode *nodeB);
+
 /**
  * @brief Recursively generates Huffman codes and fills the code table.
  * 
@@ -81,12 +88,11 @@ HuffmanNode* mergeNodes(HuffmanNode *nodeA, HuffmanNode *nodeB);
  * @param code_table Array to store the generated codes for each character.
  */
 void generate_huffman_code(HuffmanNode *root, char *code, int depth, char *code_table[]);
+
 /**
- * @brief Creates a new Huffman node.
+ * @brief Free the memory allocated for the Huffman tree
  * 
- * @param freq Frequency of the character.
- * @param data Character data (if leaf node).
- * @return HuffmanNode* Pointer to the new node.
+ * @param root Pointer to the root of the Huffman tree.
  */
 void free_Minheap_Huffman(HuffmanNode *root);
 

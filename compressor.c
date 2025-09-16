@@ -131,7 +131,7 @@ int compress_file(const char *input_file, const char *output_file)
 int save_frequency_table(unsigned char **buffer, size_t *bufferSize, uint32_t *freq, size_t freqSize, int N)
 {
 	int offset = 0;
-	*bufferSize = 1 + N * (1 + sizeof(int));
+	*bufferSize = 1 + N * (1 + sizeof(uint32_t));
 	void *temp = realloc(*buffer, *bufferSize);
 	if (!temp)
 	{
@@ -170,7 +170,7 @@ void encode_and_write_data(FILE *fpI, unsigned char **buffer, int *offset, size_
 	}
 	*buffer = (unsigned char *)temp;
 
-	// Reserve one byte for storing number of valid bits in the last byte
+	// Reserve one byte for storing number of valid bits of the last byte
 	int placeholder = *offset;
 	memcpy(*buffer + (*offset), &ch, sizeof(ch));
 	(*offset)++;
@@ -182,9 +182,9 @@ void encode_and_write_data(FILE *fpI, unsigned char **buffer, int *offset, size_
 			fprintf(stderr, "No Huffman code for byte 0x%02X ('%c')\n", ch, (ch >= 32 && ch < 127) ? ch : '?');
 			return;
 		}
-
-		total_bits += strlen(code_table[ch]);
-		for (int i = 0; i < strlen(code_table[ch]); i++)
+		int len = strlen(code_table[ch]);
+		total_bits += len;
+		for (int i = 0; i < len; i++)
 		{
 			int bit = (code_table[ch][i] == '1') ? 1 : 0;
 			bits_empty--;
