@@ -28,7 +28,7 @@ typedef struct MinHeap {
  * @param freq Array of 256 frequencies (uint32_t).
  * @return MinHeap* Pointer to the final min-heap containing the root node.
  */
-MinHeap* build_huffman_tree(uint32_t freq[]);
+MinHeap* build_huffman_tree(uint32_t freq[], int totalUniqueChar);
 
 /**
  * @brief Creates a new Huffman node.

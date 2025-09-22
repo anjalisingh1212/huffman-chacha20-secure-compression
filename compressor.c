@@ -56,7 +56,7 @@ int compress_file(const char *input_file, const char *output_file)
 	}
 
 	// Build Huffman tree from frequency table
-	MinHeap *heap = build_huffman_tree(freq);
+	MinHeap *heap = build_huffman_tree(freq, totalUniqueChar);
 	if (!heap)
 	{
 		fclose(fpI);

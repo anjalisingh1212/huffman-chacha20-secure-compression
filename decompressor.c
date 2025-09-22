@@ -24,13 +24,13 @@ int decompress_file(const char *input_file, const char *output_file)
 		return -1;
 
 	int offset = 0;
-	int N = (int)packedData[offset++];	// Number of unique symbols
+	int totalUniqueChar = (int)packedData[offset++];	// Number of unique symbols
 	size_t freqSize = 256;
 	uint32_t freq[256] = {0};
 	unsigned char symbol;
 
 	// Reconstruct frequency table
-	for (int i = 0; i < N; i++)
+	for (int i = 0; i < totalUniqueChar; i++)
 	{
 		symbol = packedData[offset++];
 		memcpy(&freq[symbol], packedData + offset, sizeof(uint32_t));
@@ -39,7 +39,7 @@ int decompress_file(const char *input_file, const char *output_file)
 	}
 
 	// Rebuild Huffman tree
-	MinHeap *root = build_huffman_tree(freq);
+	MinHeap *root = build_huffman_tree(freq, totalUniqueChar);
 	if(!root || root->size == 0)
 	{
 		free(packedData);

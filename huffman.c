@@ -7,25 +7,19 @@
 #include "utils.h"
 
 // Builds a Huffman tree from the given frequency table
-MinHeap* build_huffman_tree(uint32_t *freq){
+MinHeap* build_huffman_tree(uint32_t *freq, int totalUniqueChar){
 	MinHeap *heap = (MinHeap*)malloc(sizeof(MinHeap));
 	heap->size = 0;
-	heap->node_array = (HuffmanNode**)malloc(sizeof(HuffmanNode*));
+	heap->node_array = (HuffmanNode**)malloc(sizeof(HuffmanNode*)*totalUniqueChar);
 	if(heap->node_array == NULL)
 		errExit("Memory allocation failed for Huffman node array");
 
 	// Insert all non-zero frequency characters into the heap
 	for(int i = 0; i < 256; i++){
 		if(freq[i] > 0){
-    		heap->size++;
-			heap->node_array = (HuffmanNode**)realloc(heap->node_array,sizeof(HuffmanNode*)*heap->size);
-			if(heap->node_array == NULL)
-				errExit("Memory allocation failed for Huffman node array resize");
-			
-			heap->node_array[heap->size-1] = createNode(freq[i], (char)i);
+			heap->node_array[heap->size++] = createNode(freq[i], (char)i);
 			heapifyUp(heap);
 		}
-
 	}
 	
 	// Merge nodes until only one tree remains
