@@ -1,0 +1,10 @@
+#VS code setting
+./vscode
+
+#compiled binaries
+*.exe
+*.out
+*.o
+
+# Ignore compiled executable
+run
