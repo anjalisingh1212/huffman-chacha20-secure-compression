@@ -1,5 +1,5 @@
 #VS code setting
-./vscode
+.vscode
 
 #compiled binaries
 *.exe
